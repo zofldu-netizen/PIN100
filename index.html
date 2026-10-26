@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIN100 - 파이어베이스 방코드 볼링 점수 앱</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 16px; color: #1c1e21; }
+  .container { max-width: 520px; margin: 0 auto; background: #fff; padding: 22px 18px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+  h1 { text-align: center; margin: 4px 0 6px; font-size: 30px; }
+  .sub { text-align: center; color: #606770; font-size: 14px; margin-bottom: 18px; line-height: 1.5; }
+  label { display: block; font-size: 13px; font-weight: bold; margin: 14px 0 6px; color: #444; }
+  input[type="text"], input[type="number"] { width: 100%; padding: 13px; font-size: 17px; border: 1px solid #ccc; border-radius: 10px; text-align: center; }
+  textarea { width: 100%; padding: 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 10px; min-height: 140px; font-family: monospace; }
+  button { width: 100%; padding: 14px; font-size: 17px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-top: 10px; }
+  .btn-primary { background: #1877f2; color: #fff; }
+  .btn-green { background: #27ae60; color: #fff; }
+  .btn-grey { background: #e4e6eb; color: #1c1e21; }
+  .btn-small { width: auto; padding: 8px 14px; font-size: 14px; margin-top: 0; }
+  .divider { text-align: center; color: #999; margin: 20px 0 4px; font-size: 13px; }
+  .hidden { display: none !important; }
+  .room-code { text-align: center; font-size: 42px; font-weight: 900; letter-spacing: 6px; margin: 6px 0; }
+  .status { text-align: center; font-size: 14px; color: #1877f2; font-weight: bold; margin-bottom: 12px; }
+  .player { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+  .player.me { background: #e7f3ff; border-radius: 8px; }
+  .player.base { outline: 1px solid #1877f2; outline-offset: -1px; }
+  .player .name { font-weight: bold; font-size: 16px; }
+  .player .meta { font-size: 12px; color: #666; }
+  .player .total { font-size: 20px; font-weight: 900; }
+  .player .diff { font-size: 13px; font-weight: bold; text-align: right; margin-top: 2px; }
+  .gold-star { color: #e6a800; }
+  .diff-plus { color: #d93025; }
+  .diff-minus { color: #1a73e8; }
+  .diff-zero { color: #5f6368; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row button { flex: 1; }
+  .note { font-size: 12px; color: #666; line-height: 1.6; margin-top: 16px; }
+  ol.steps { font-size: 13px; color: #333; line-height: 1.7; padding-left: 18px; }
+  ol.steps li { margin-bottom: 6px; }
+  .result-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  .result-table th, .result-table td { border: 1px solid #e4e6eb; padding: 5px 2px; text-align: center; overflow: hidden; white-space: nowrap; }
+  .result-table th { background: #2c3e50; color: #fff; font-size: 11px; }
+  .result-table td.name { text-align: left; font-weight: bold; padding-left: 4px; }
+  .result-table td.total { font-weight: 900; background: #f8f9fa; line-height: 1.2; }
+  .result-table .rdiff { font-size: 10px; font-weight: bold; display: block; }
+  .result-table tbody tr { cursor: pointer; }
+  .result-table tbody tr.selected { outline: 1px solid #1877f2; outline-offset: -1px; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+<div class="container">
+  <div id="setupScreen" class="hidden">
+    <h1>🎳 PIN100</h1>
+    <div class="sub">서버에 방을 저장하려면, 파이어베이스 설정이 한 번 필요합니다.<br>설정은 이 폰에만 저장되고, 파일에는 들어가지 않습니다.</div>
+    <ol class="steps">
+      <li>파이어베이스 콘솔에서 프로젝트를 만들고, Realtime Database를 만드세요. (무료 구간, 위치 asia-southeast1)</li>
+      <li>Database 규칙을 익명 로그인 허용으로 바꾸세요.<br><code>{"rules":{"rooms":{".read":"auth != null",".write":"auth != null"}}}</code></li>
+      <li>프로젝트 설정 &gt; 웹 앱에서 나온 firebaseConfig 전체를 아래에 붙여넣으세요.</li>
+    </ol>
+    <label for="configInput">firebaseConfig (콘솔에서 복사한 그대로 붙여넣어도 돼요)</label>
+    <textarea id="configInput" placeholder='파이어베이스 콘솔에서 복사한 firebaseConfig 전체를 그대로 붙여넣으세요. import 부분이나 따옴표 없는 형태여도 됩니다.'></textarea>
+    <button class="btn-primary" onclick="saveConfig()">설정 저장하고 시작하기</button>
+    <div class="note">참가자 폰에도 같은 설정을 한 번씩 붙여넣어야 합니다. 설정한 폰에서 ‘설정 복사’로 보내면 됩니다.</div>
+  </div>
+
+  <div id="homeScreen" class="hidden">
+    <h1>🎳 PIN100</h1>
+    <div class="sub">방코드로 모여서, 각자 자기 폰에서 점수를 입력하면<br>모두의 합계가 함께 보입니다. 방 정보는 서버에 저장됩니다.</div>
+    <div class="status" id="connStatus">서버 연결 중…</div>
+    <label for="myName">내 이름</label>
+    <input type="text" id="myName" placeholder="예: 명지" maxlength="20">
+    <button class="btn-primary" onclick="createRoom()">경기 만들기</button>
+    <div class="divider">— 또는 —</div>
+    <label for="joinCode">방코드 4자리</label>
+    <input type="text" id="joinCode" placeholder="예: 4821" maxlength="4" inputmode="numeric">
+    <button class="btn-green" onclick="joinRoom()">경기 참여하기</button>
+    <div class="note">설정 없이 바로 열립니다. 홈버튼으로 나갔다가, 화면이 꺼졌다가, 심지어 페이지를 닫았다가 다시 들어와도 방코드만 알면 점수가 그대로 남아있습니다. 나가기는 방을 지우지 않습니다.</div>
+  </div>
+
+  <div id="roomScreen" class="hidden">
+    <h1 style="font-size:22px;">🎳 PIN100</h1>
+    <div class="sub" style="margin-bottom:6px;">방코드</div>
+    <div class="room-code" id="roomCodeText">----</div>
+    <div style="text-align:center;"><button class="btn-grey btn-small" onclick="copyCode()">방코드 복사</button> <button class="btn-grey btn-small" onclick="leaveRoom()">나가기</button></div>
+    <div class="status" id="statusText">연결 중…</div>
+    <div id="playerList"></div>
+    <label for="scoreInput">내 점수 입력 (한 게임)</label>
+    <div class="row">
+      <input type="number" id="scoreInput" placeholder="예: 210" min="0" max="300" inputmode="numeric">
+      <button class="btn-primary" onclick="addScore()">점수 추가</button>
+    </div>
+    <button class="btn-grey" onclick="undoLast()">내 마지막 게임 취소</button>
+    <button class="btn-green" onclick="showResult()">결과 보기</button>
+    <div class="note">· 내 점수만 입력할 수 있고, 입력하면 방에 있는 모두의 화면에 합계가 반영됩니다.<br>· 방 정보는 서버에 저장되므로, 홈버튼·화면 꺼짐·페이지 닫기 후 다시 들어와도 방코드만으로 이어집니다.</div>
+  </div>
+
+  <div id="resultScreen" class="hidden">
+    <h1 style="font-size:22px;" id="resultTitle">결과 보기</h1>
+    <div class="sub" style="margin-bottom:6px;">방코드 <span id="resultRoomCodeText">----</span></div>
+    <div id="resultTableWrap"></div>
+    <button class="btn-grey" onclick="backToRoom()">입력 화면으로 돌아가기</button>
+    <div class="note">· 친 게임 수만큼 열이 생깁니다. 아직 치지 않은 게임은 - 로 표시됩니다.<br>· 합계 칸 아래 숫자는 ★ 옆 사람과의 핀 차이입니다.</div>
+  </div>
+</div>
+
+<script>
+  let db = null;
+  let myName = '';
+  let roomCode = '';
+  let myPlayerKey = null;
+  let players = [];
+  let baseName = null;
+  let playersRef = null;
+
+  function totalOf(p) {
+    const games = Array.isArray(p.games) ? p.games : [];
+    return games.reduce(function(a, b) { return a + b; }, 0);
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function showScreen(id) {
+    ['setupScreen', 'homeScreen', 'roomScreen', 'resultScreen'].forEach(function(x) {
+      document.getElementById(x).classList.toggle('hidden', x !== id);
+    });
+  }
+  const EMBEDDED_CONFIG = {"apiKey":"AIzaSyAXo8d6BguTIQBdmrfhqQsjK1nNzcla89k","authDomain":"pin100-2be6b.firebaseapp.com","databaseURL":"https://pin100-2be6b-default-rtdb.asia-southeast1.firebasedatabase.app","projectId":"pin100-2be6b","storageBucket":"pin100-2be6b.firebasestorage.app","messagingSenderId":"751880237593","appId":"1:751880237593:web:08339b4104a3ed7a063088"};
+  function loadConfig() { return EMBEDDED_CONFIG; }
+  function initFirebase() {
+    const cfg = loadConfig();
+    if (!cfg || !cfg.databaseURL) { showScreen('setupScreen'); return false; }
+    try {
+      if (!firebase.apps.length) { firebase.initializeApp(cfg); }
+      db = firebase.database();
+      firebase.auth().signInAnonymously().catch(function(err) {
+        document.getElementById('connStatus').textContent = '서버 로그인 실패: ' + err.message;
+      });
+      showScreen('homeScreen');
+      document.getElementById('connStatus').textContent = '서버 연결됨' + (cfg.projectId ? ' · ' + cfg.projectId : '');
+      return true;
+    } catch (e) {
+      alert('파이어베이스 설정이 올바르지 않습니다. 설정을 다시 확인해 주세요.\n' + e.message);
+      showScreen('setupScreen');
+      return false;
+    }
+  }
+  function parseConfig(raw) {
+    let text = String(raw || '').trim();
+    // 콘솔 전체 스니펫을 그대로 붙여넣은 경우, firebaseConfig 뒤의 중괄호 부분만 추출
+    // (import { initializeApp } 부분의 중괄호를 잘못 잡지 않기 위해)
+    const cfgIdx = text.indexOf('firebaseConfig');
+    const searchFrom = cfgIdx >= 0 ? cfgIdx : 0;
+    const first = text.indexOf('{', searchFrom);
+    const last = text.lastIndexOf('}');
+    if (first >= 0 && last > first) { text = text.slice(first, last + 1); }
+    try { return JSON.parse(text); } catch (e) {}
+    // 따옴표 없는 키 형태(apiKey: "...")를 JSON 형태로 변환
+    const quoted = text.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
+    return JSON.parse(quoted);
+  }
+  function saveConfig() {
+    const raw = document.getElementById('configInput').value.trim();
+    try {
+      const cfg = parseConfig(raw);
+      if (!cfg.databaseURL) { alert('databaseURL이 없는 설정입니다. Realtime Database 설정에서 나온 전체 config를 붙여넣어 주세요.'); return; }
+      localStorage.setItem('pin100_firebase_config', JSON.stringify(cfg));
+      initFirebase();
+    } catch (e) {
+      alert('설정을 읽지 못했습니다. 파이어베이스 콘솔에서 나온 firebaseConfig 전체를 그대로 붙여넣어 주세요.');
+    }
+  }
+  function copyConfig() {
+    const cfg = localStorage.getItem('pin100_firebase_config') || '';
+    if (!cfg) { alert('저장된 설정이 없습니다.'); return; }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(cfg).then(function() { alert('설정을 복사했습니다. 참가자에게 보내 주세요.'); });
+    } else { alert(cfg); }
+  }
+  function clearConfig() {
+    if (!confirm('파이어베이스 설정을 지울까요?')) return;
+    localStorage.removeItem('pin100_firebase_config');
+    location.reload();
+  }
+  function makeCode() { return String(Math.floor(1000 + Math.random() * 9000)); }
+  function basePlayer() {
+    return players.find(function(p) { return p.name === baseName; })
+      || players.find(function(p) { return p.name === myName; })
+      || players[0];
+  }
+  function diffHtml(p, base) {
+    const diff = base ? totalOf(base) - totalOf(p) : 0;
+    if (base && p.name === base.name) return '<span class="diff diff-zero">0</span>';
+    const cls = diff > 0 ? 'diff-plus' : 'diff-minus';
+    return '<span class="diff ' + cls + '">' + (diff > 0 ? '+' + diff + '핀' : diff + '핀') + '</span>';
+  }
+
+  function render() {
+    const list = document.getElementById('playerList');
+    const sorted = players.slice().sort(function(a, b) { return totalOf(b) - totalOf(a); });
+    const rank = {};
+    sorted.forEach(function(p, i) { rank[p.key] = i + 1; });
+    const base = basePlayer();
+    if (base) { baseName = base.name; }
+    let html = '';
+    players.forEach(function(p) {
+      const me = (p.name === myName);
+      const isBase = base && p.name === base.name;
+      const games = Array.isArray(p.games) ? p.games : [];
+      const last = games.length ? games[games.length - 1] : '-';
+      html += '<div class="player' + (me ? ' me' : '') + (isBase ? ' base' : '') + '">'
+        + '<div><div class="name">' + rank[p.key] + '위 ' + escapeHtml(p.name) + (me ? ' (나)' : '') + (isBase ? ' <span class="gold-star">★</span>' : '') + '</div>'
+        + '<div class="meta">' + games.length + '게임 · 최근 ' + last + '점</div></div>'
+        + '<div><div class="total">' + totalOf(p) + '점</div>'
+        + diffHtml(p, base) + '</div></div>';
+    });
+    list.innerHTML = html || '<div class="sub">참가자가 없습니다.</div>';
+    const rows = list.querySelectorAll('.player');
+    rows.forEach(function(row, idx) {
+      row.addEventListener('click', function() { baseName = players[idx].name; render(); renderResult(); });
+    });
+    document.getElementById('statusText').textContent = '연결됨 · 참가자 ' + players.length + '명';
+    const rs = document.getElementById('resultScreen');
+    if (rs && !rs.classList.contains('hidden')) { renderResult(); }
+  }
+
+  function renderResult() {
+    const wrap = document.getElementById('resultTableWrap');
+    if (!wrap) return;
+    const sorted = players.slice().sort(function(a, b) { return totalOf(b) - totalOf(a); });
+    const base = basePlayer();
+    if (base) { baseName = base.name; }
+    const last = sorted[sorted.length - 1];
+    const titleEl = document.getElementById('resultTitle');
+    if (titleEl && last) { titleEl.textContent = last.name + '컵 결과보기'; }
+    const maxGames = players.reduce(function(m, p) { return Math.max(m, p.games.length); }, 0);
+    const nameW = maxGames ? 24 : 50;
+    const totalW = maxGames ? 24 : 50;
+    const gameW = maxGames ? (100 - nameW - totalW) / maxGames : 0;
+    let html = '<table class="result-table"><colgroup>';
+    html += '<col style="width:' + nameW + '%">';
+    for (let i = 0; i < maxGames; i++) { html += '<col style="width:' + gameW.toFixed(1) + '%">'; }
+    html += '<col style="width:' + totalW + '%"></colgroup><thead><tr><th>이름</th>';
+    for (let i = 1; i <= maxGames; i++) { html += '<th>' + i + 'G</th>'; }
+    html += '<th>합계</th></tr></thead><tbody>';
+    sorted.forEach(function(p, idx) {
+      const isBase = base && p.name === base.name;
+      const games = Array.isArray(p.games) ? p.games : [];
+      const diff = base ? totalOf(base) - totalOf(p) : 0;
+      const diffText = isBase ? '0' : (diff > 0 ? '+' + diff + '핀' : diff + '핀');
+      const diffClass = isBase ? 'diff-zero' : (diff > 0 ? 'diff-plus' : 'diff-minus');
+      html += '<tr class="' + (isBase ? 'selected' : '') + '"><td class="name">' + (idx + 1) + ' ' + escapeHtml(p.name) + (isBase ? ' <span class="gold-star">★</span>' : '') + '</td>';
+      for (let g = 0; g < maxGames; g++) {
+        html += '<td>' + (g < games.length ? games[g] : '-') + '</td>';
+      }
+      html += '<td class="total">' + totalOf(p) + '<span class="rdiff ' + diffClass + '">' + diffText + '</span></td></tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = players.length ? html : '<div class="sub">참가자가 없습니다.</div>';
+    const rows = wrap.querySelectorAll('tbody tr');
+    rows.forEach(function(row, idx) {
+      row.addEventListener('click', function() { baseName = sorted[idx].name; render(); renderResult(); });
+    });
+  }
+
+  function showResult() {
+    showScreen('resultScreen');
+    document.getElementById('resultRoomCodeText').textContent = roomCode;
+    renderResult();
+  }
+  function backToRoom() { showScreen('roomScreen'); render(); }
+
+  function listenRoom() {
+    if (playersRef) { playersRef.off(); }
+    playersRef = db.ref('rooms/' + roomCode + '/players');
+    playersRef.on('value', function(snap) {
+      const val = snap.val() || {};
+      players = Object.keys(val).map(function(k) {
+        const p = val[k] || {};
+        return { key: k, name: p.name || '', games: Array.isArray(p.games) ? p.games : [] };
+      });
+      render();
+    });
+  }
+  function showRoom() {
+    document.getElementById('roomCodeText').textContent = roomCode;
+    showScreen('roomScreen');
+  }
+
+  async function createRoom() {
+    myName = document.getElementById('myName').value.trim();
+    if (!myName) { alert('이름을 입력해 주세요.'); return; }
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const code = makeCode();
+      const snap = await db.ref('rooms/' + code + '/players').once('value');
+      if (!snap.exists()) {
+        roomCode = code;
+        const ref = await db.ref('rooms/' + code + '/players').push({ name: myName, games: [] });
+        myPlayerKey = ref.key;
+        localStorage.setItem('pin100_player_' + code + '_' + myName, myPlayerKey);
+        listenRoom();
+        showRoom();
+        return;
+      }
+    }
+    alert('방코드를 만들지 못했습니다. 다시 시도해 주세요.');
+  }
+
+  async function joinRoom() {
+    myName = document.getElementById('myName').value.trim();
+    roomCode = document.getElementById('joinCode').value.trim();
+    if (!myName) { alert('이름을 입력해 주세요.'); return; }
+    if (!/^\d{4}$/.test(roomCode)) { alert('방코드 4자리를 입력해 주세요.'); return; }
+    const snap = await db.ref('rooms/' + roomCode + '/players').once('value');
+    if (!snap.exists()) { alert('방을 찾을 수 없습니다. 방코드를 확인해 주세요.'); return; }
+    const val = snap.val() || {};
+    let key = localStorage.getItem('pin100_player_' + roomCode + '_' + myName);
+    if (!key || !val[key]) {
+      const found = Object.keys(val).find(function(k) { return val[k] && val[k].name === myName; });
+      if (found) { key = found; }
+    }
+    if (!key) {
+      const ref = await db.ref('rooms/' + roomCode + '/players').push({ name: myName, games: [] });
+      key = ref.key;
+    }
+    myPlayerKey = key;
+    localStorage.setItem('pin100_player_' + roomCode + '_' + myName, myPlayerKey);
+    listenRoom();
+    showRoom();
+  }
+
+  async function addScore() {
+    const el = document.getElementById('scoreInput');
+    const score = parseInt(el.value, 10);
+    if (isNaN(score) || score < 0 || score > 300) { alert('0~300 사이의 점수를 입력해 주세요.'); return; }
+    if (!myPlayerKey) { alert('방에 먼저 참여해 주세요.'); return; }
+    const ref = db.ref('rooms/' + roomCode + '/players/' + myPlayerKey + '/games');
+    const snap = await ref.once('value');
+    const games = Array.isArray(snap.val()) ? snap.val() : [];
+    games.push(score);
+    await ref.set(games);
+    el.value = '';
+  }
+
+  async function undoLast() {
+    if (!myPlayerKey) return;
+    const ref = db.ref('rooms/' + roomCode + '/players/' + myPlayerKey + '/games');
+    const snap = await ref.once('value');
+    const games = Array.isArray(snap.val()) ? snap.val() : [];
+    if (games.length) { games.pop(); await ref.set(games); }
+  }
+
+  function copyCode() {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(roomCode).then(function() { alert('방코드 ' + roomCode + '를 복사했습니다.'); });
+    } else { alert('방코드: ' + roomCode); }
+  }
+  function leaveRoom() {
+    if (playersRef) { playersRef.off(); }
+    showScreen('homeScreen');
+  }
+
+  window.onload = function() { initFirebase(); };
+</script>
+</body>
+</html>
