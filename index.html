@@ -46,6 +46,8 @@
   .result-table .rdiff { font-size: 10px; font-weight: bold; display: block; }
   .result-table tbody tr { cursor: pointer; }
   .result-table tbody tr.selected { outline: 1px solid #1877f2; outline-offset: -1px; }
+  .common { font-size: 9px; font-weight: normal; color: #666; display: block; }
+  .room-table td.name small { display: block; font-weight: normal; font-size: 10px; color: #666; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -95,7 +97,7 @@
     </div>
     <button class="btn-grey" onclick="undoLast()">내 마지막 게임 취소</button>
     <button class="btn-green" onclick="showResult()">결과 보기</button>
-    <div class="note">· 내 점수만 입력할 수 있고, 입력하면 방에 있는 모두의 화면에 합계가 반영됩니다.<br>· 방 정보는 서버에 저장되므로, 홈버튼·화면 꺼짐·페이지 닫기 후 다시 들어와도 방코드만으로 이어집니다.</div>
+    <div class="note">· 내 점수만 입력할 수 있고, 입력하면 방에 있는 모두의 화면에 합계가 반영됩니다.<br>· 방 정보는 서버에 저장되므로, 홈버튼·화면 꺼짐·페이지 닫기 후 다시 들어와도 방코드만으로 이어집니다.<br>· 중간에 들어온 사람은 들어온 게임부터 입력하고, 이전 게임은 - 로 보입니다. 핀 차이는 두 사람이 같이 친 게임만 합산합니다.</div>
   </div>
 
   <div id="resultScreen" class="hidden">
@@ -103,7 +105,7 @@
     <div class="sub" style="margin-bottom:6px;">방코드 <span id="resultRoomCodeText">----</span></div>
     <div id="resultTableWrap"></div>
     <button class="btn-grey" onclick="backToRoom()">입력 화면으로 돌아가기</button>
-    <div class="note">· 친 게임 수만큼 열이 생깁니다. 아직 치지 않은 게임은 - 로 표시됩니다.<br>· 합계 칸 아래 숫자는 ★ 옆 사람과의 핀 차이입니다.</div>
+    <div class="note">· 친 게임 수만큼 열이 생깁니다. 아직 치지 않은 게임은 - 로 표시됩니다.<br>· 합계 칸 아래 숫자는 ★ 옆 사람과의 핀 차이로, 두 사람이 같이 친 게임만 합산합니다.</div>
   </div>
 </div>
 
@@ -191,11 +193,24 @@
       || players.find(function(p) { return p.name === myName; })
       || players[0];
   }
+  function commonDiff(base, p) {
+    let bSum = 0, pSum = 0, count = 0;
+    const bg = Array.isArray(base.games) ? base.games : [];
+    const pg = Array.isArray(p.games) ? p.games : [];
+    const n = Math.max(bg.length, pg.length);
+    for (let i = 0; i < n; i++) {
+      const bv = bg[i] || 0;
+      const pv = pg[i] || 0;
+      if (bv > 0 && pv > 0) { bSum += bv; pSum += pv; count++; }
+    }
+    return { diff: bSum - pSum, count: count, bSum: bSum, pSum: pSum };
+  }
   function diffHtml(p, base) {
-    const diff = base ? totalOf(base) - totalOf(p) : 0;
-    if (base && p.name === base.name) return '<span class="diff diff-zero">0</span>';
-    const cls = diff > 0 ? 'diff-plus' : 'diff-minus';
-    return '<span class="diff ' + cls + '">' + (diff > 0 ? '+' + diff + '핀' : diff + '핀') + '</span>';
+    if (!base) return '<span class="diff diff-zero">0</span>';
+    if (p.name === base.name) return '<span class="diff diff-zero">0</span>';
+    const cd = commonDiff(base, p);
+    const cls = cd.diff > 0 ? 'diff-plus' : 'diff-minus';
+    return '<span class="diff ' + cls + '">' + (cd.diff > 0 ? '+' + cd.diff + '핀' : cd.diff + '핀') + '</span><span class="common">공통 ' + cd.count + '게임</span>';
   }
 
   function render() {
@@ -205,22 +220,33 @@
     sorted.forEach(function(p, i) { rank[p.key] = i + 1; });
     const base = basePlayer();
     if (base) { baseName = base.name; }
-    let html = '';
-    players.forEach(function(p) {
+    const maxGames = players.reduce(function(m, p) { return Math.max(m, Array.isArray(p.games) ? p.games.length : 0); }, 0);
+    const nameW = maxGames ? 24 : 50;
+    const totalW = maxGames ? 24 : 50;
+    const gameW = maxGames ? (100 - nameW - totalW) / maxGames : 0;
+    let html = '<table class="result-table room-table"><colgroup>';
+    html += '<col style="width:' + nameW + '%">';
+    for (let i = 0; i < maxGames; i++) { html += '<col style="width:' + gameW.toFixed(1) + '%">'; }
+    html += '<col style="width:' + totalW + '%"></colgroup><thead><tr><th>이름</th>';
+    for (let i = 1; i <= maxGames; i++) { html += '<th>' + i + 'G</th>'; }
+    html += '<th>합계</th></tr></thead><tbody>';
+    sorted.forEach(function(p, idx) {
       const me = (p.name === myName);
       const isBase = base && p.name === base.name;
       const games = Array.isArray(p.games) ? p.games : [];
-      const last = games.length ? games[games.length - 1] : '-';
-      html += '<div class="player' + (me ? ' me' : '') + (isBase ? ' base' : '') + '">'
-        + '<div><div class="name">' + rank[p.key] + '위 ' + escapeHtml(p.name) + (me ? ' (나)' : '') + (isBase ? ' <span class="gold-star">★</span>' : '') + '</div>'
-        + '<div class="meta">' + games.length + '게임 · 최근 ' + last + '점</div></div>'
-        + '<div><div class="total">' + totalOf(p) + '점</div>'
-        + diffHtml(p, base) + '</div></div>';
+      const joined = games.length && games[0] === 0 ? '' : '';
+      html += '<tr class="' + (isBase ? 'selected' : '') + '"><td class="name">' + rank[p.key] + ' ' + escapeHtml(p.name) + (me ? ' (나)' : '') + (isBase ? ' <span class="gold-star">★</span>' : '') + '</td>';
+      for (let g = 0; g < maxGames; g++) {
+        const v = g < games.length ? games[g] : 0;
+        html += '<td>' + (v > 0 ? v : '-') + '</td>';
+      }
+      html += '<td class="total">' + totalOf(p) + diffHtml(p, base) + '</td></tr>';
     });
-    list.innerHTML = html || '<div class="sub">참가자가 없습니다.</div>';
-    const rows = list.querySelectorAll('.player');
+    html += '</tbody></table>';
+    list.innerHTML = players.length ? html : '<div class="sub">참가자가 없습니다.</div>';
+    const rows = list.querySelectorAll('tbody tr');
     rows.forEach(function(row, idx) {
-      row.addEventListener('click', function() { baseName = players[idx].name; render(); renderResult(); });
+      row.addEventListener('click', function() { baseName = sorted[idx].name; render(); renderResult(); });
     });
     document.getElementById('statusText').textContent = '연결됨 · 참가자 ' + players.length + '명';
     const rs = document.getElementById('resultScreen');
@@ -249,14 +275,15 @@
     sorted.forEach(function(p, idx) {
       const isBase = base && p.name === base.name;
       const games = Array.isArray(p.games) ? p.games : [];
-      const diff = base ? totalOf(base) - totalOf(p) : 0;
-      const diffText = isBase ? '0' : (diff > 0 ? '+' + diff + '핀' : diff + '핀');
-      const diffClass = isBase ? 'diff-zero' : (diff > 0 ? 'diff-plus' : 'diff-minus');
+      const cd = base ? commonDiff(base, p) : { diff: 0, count: 0 };
+      const diffText = isBase ? '0' : (cd.diff > 0 ? '+' + cd.diff + '핀' : cd.diff + '핀');
+      const diffClass = isBase ? 'diff-zero' : (cd.diff > 0 ? 'diff-plus' : 'diff-minus');
       html += '<tr class="' + (isBase ? 'selected' : '') + '"><td class="name">' + (idx + 1) + ' ' + escapeHtml(p.name) + (isBase ? ' <span class="gold-star">★</span>' : '') + '</td>';
       for (let g = 0; g < maxGames; g++) {
-        html += '<td>' + (g < games.length ? games[g] : '-') + '</td>';
+        const v = g < games.length ? games[g] : 0;
+        html += '<td>' + (v > 0 ? v : '-') + '</td>';
       }
-      html += '<td class="total">' + totalOf(p) + '<span class="rdiff ' + diffClass + '">' + diffText + '</span></td></tr>';
+      html += '<td class="total">' + totalOf(p) + '<span class="rdiff ' + diffClass + '">' + diffText + '</span><span class="common">공통 ' + cd.count + '게임</span></td></tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = players.length ? html : '<div class="sub">참가자가 없습니다.</div>';
@@ -323,8 +350,20 @@
       if (found) { key = found; }
     }
     if (!key) {
-      const ref = await db.ref('rooms/' + roomCode + '/players').push({ name: myName, games: [] });
+      const allVals = Object.values(val);
+      const maxGames = allVals.reduce(function(m, x) { const gs = x && Array.isArray(x.games) ? x.games.length : 0; return Math.max(m, gs); }, 0);
+      const padded = Array(maxGames).fill(0);
+      const ref = await db.ref('rooms/' + roomCode + '/players').push({ name: myName, games: padded });
       key = ref.key;
+    } else {
+      const existing = val[key];
+      const allVals2 = Object.values(val);
+      const maxGames2 = allVals2.reduce(function(m, x) { const gs = x && Array.isArray(x.games) ? x.games.length : 0; return Math.max(m, gs); }, 0);
+      const eg = existing && Array.isArray(existing.games) ? existing.games.slice() : [];
+      if (eg.length < maxGames2) {
+        while (eg.length < maxGames2) { eg.push(0); }
+        await db.ref('rooms/' + roomCode + '/players/' + key + '/games').set(eg);
+      }
     }
     myPlayerKey = key;
     localStorage.setItem('pin100_player_' + roomCode + '_' + myName, myPlayerKey);
