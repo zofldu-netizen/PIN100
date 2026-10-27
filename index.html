@@ -47,7 +47,7 @@
   .result-table tbody tr { cursor: pointer; }
   .result-table tbody tr.selected { outline: 1px solid #1877f2; outline-offset: -1px; }
   .common { font-size: 9px; font-weight: normal; color: #666; display: block; }
-  .result-table td.total .diff { display: block; margin-top: 4px; }
+  .result-table td.total .diff { display: inline-block; margin-left: 6px; }
   .room-table td.name small { display: block; font-weight: normal; font-size: 10px; color: #666; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -211,7 +211,7 @@
     if (p.name === base.name) return '<span class="diff diff-zero">0</span>';
     const cd = commonDiff(base, p);
     const cls = cd.diff > 0 ? 'diff-plus' : 'diff-minus';
-    return '<span class="diff ' + cls + '">' + (cd.diff > 0 ? '+' + cd.diff + '핀' : cd.diff + '핀') + '</span><span class="common">공통 ' + cd.count + '게임</span>';
+    return '<span class="diff ' + cls + '">' + (cd.diff > 0 ? '+' + cd.diff + '핀' : cd.diff + '핀') + '</span>';
   }
 
   function render() {
