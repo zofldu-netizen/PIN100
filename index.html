@@ -93,7 +93,7 @@
     <div id="playerList"></div>
     <label for="scoreInput">내 점수 입력 (한 게임)</label>
     <div class="row">
-      <input type="number" id="scoreInput" placeholder="예: 210" min="0" max="300" inputmode="numeric">
+      <input type="number" id="scoreInput" placeholder="예: 210 (총핀도 가능)" min="0" inputmode="numeric">
       <button class="btn-primary" onclick="addScore()">점수 추가</button>
     </div>
     <button class="btn-grey" onclick="undoLast()">내 마지막 게임 취소</button>
@@ -375,7 +375,7 @@
   async function addScore() {
     const el = document.getElementById('scoreInput');
     const score = parseInt(el.value, 10);
-    if (isNaN(score) || score < 0 || score > 300) { alert('0~300 사이의 점수를 입력해 주세요.'); return; }
+    if (isNaN(score) || score < 0) { alert('0 이상의 점수를 입력해 주세요.'); return; }
     if (!myPlayerKey) { alert('방에 먼저 참여해 주세요.'); return; }
     const ref = db.ref('rooms/' + roomCode + '/players/' + myPlayerKey + '/games');
     const snap = await ref.once('value');
