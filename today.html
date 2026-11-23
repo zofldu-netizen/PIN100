@@ -259,7 +259,9 @@
   }
   function fbWriteCurrent(){
     if(!FB.ready || !fbCurrentRef) return;
-    if(FB.linkMode){ FB.linkMode = false; fbAttachCurrent(); }
+    /* 링크 분리: 여기서 최신 경기 리스너를 붙이지 않는다. 기본 링크로 연 화면이
+       파이어베이스 최신 경기를 결과 화면에 자동으로 불러오지 않게 하기 위해서다.
+       결과 링크(#d=)로 연 화면도 링크의 경기가 그대로 유지된다. */
     if(FB.applyingRemote) return;
     fbCurrentRef.set({ players: snapshotPlayers(), baseName: baseName, pinRate: pinRate,
       games: games, gamesManual: gamesManual, histId: currentHistId,
@@ -280,10 +282,14 @@
       FB.db = firebase.database();
       firebase.auth().signInAnonymously().then(function(){
         FB.ready = true;
-        fbStatus("서버 연결됨 · 누구나 같은 결과를 봐요");
+        fbStatus("서버 연결됨 · 이전 기록은 누구나 볼 수 있어요");
         fbCurrentRef = FB.db.ref("results/current");
         fbHistoryRef = FB.db.ref("results/history");
-        if(!FB.linkMode) fbAttachCurrent();
+        /* 링크 분리: 기본 링크(데이터 없는 주소)로 열면 파이어베이스 최신 경기를
+           결과 화면에 자동으로 불러오지 않는다. 빈 상태로 시작한다.
+           결과 링크(#d=)로 열면 링크 안의 경기가 보이고, 이전 기록은 아래
+           히스토리 리스너로 계속 공유된다. 그래서 여기서 fbAttachCurrent()를
+           부르지 않는다. (fbAttachCurrent/applyRemoteCurrent는 예비로 남겨둔다.) */
         fbHistoryRef.orderByChild("savedAt").limitToLast(5).on("value", function(snap){
           var val = snap.val() || {};
           var list = Object.keys(val).map(function(k){
@@ -470,7 +476,10 @@
     });
   }
 
-  /* 링크 공유: 서버 없이도 받는 사람이 같은 결과를 보도록, 현재 명단·기준·게임수·핀 단가를 링크(#d=) 안에 담는다. 깃허브에 올린 주소 그대로 전송된다. */
+  /* 링크 분리: 기본 링크(해시 없는 주소)는 빈 상태로 열리고, 링크 공유하기로 만드는
+     결과 링크(#d=)는 현재 명단·기준·게임수·핀 단가를 링크 안에 담아 받는 사람이
+     그 경기 그대로 보게 한다. 결과 링크는 1개(최신 결과)만 쓴다. 이전 경기는
+     이전 기록 탭에서 찾아보면 된다. 깃허브에 올린 주소 그대로 전송된다. */
   function encodeState(){
     var state = {
       p: players.map(function(p){ return [p.name, p.score]; }),
