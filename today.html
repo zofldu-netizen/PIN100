@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="PIN100 결과보기" />
+<meta property="og:description" content="경기 결과 · 순위와 정산을 링크로 확인하세요." />
+<link rel="icon" href="data:," />
+<title>PIN100 결과보기</title>
+<style>
+  :root{
+    --bg:#e9edf1; --card:#ffffff; --card2:#f6f8fa; --text:#17202b; --muted:#66727f; --line:#d9dfe7;
+    --head:#2e4057; --head-text:#ffffff; --blue:#0f6bff; --blue-soft:#eaf2ff; --green:#1fa35c; --gold:#f2a900;
+    --red:#d93a3a; --plus:#0f6bff; --minus:#d93a3a; --shadow:0 10px 30px rgba(20,35,55,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12161c; --card:#1c232e; --card2:#242e3d; --text:#eef2f7; --muted:#9aa7b5; --line:#344052; --head:#111a26; --blue-soft:#1a2f52; --shadow:0 10px 30px rgba(0,0,0,.35); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  button,input,textarea{font:inherit}
+  button{min-height:44px;cursor:pointer}
+  .wrap{max-width:560px;margin:0 auto;padding:18px 14px 36px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 2px 14px}
+  .brand{font-weight:900;letter-spacing:.02em;font-size:22px}
+  .brand span{color:var(--blue)}
+  .pill{font-size:12px;font-weight:800;color:var(--blue);background:var(--blue-soft);border:1px solid color-mix(in srgb, var(--blue) 25%, transparent);padding:7px 10px;border-radius:999px;white-space:nowrap}
+  .card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:18px 16px 20px;border:1px solid var(--line)}
+  /* tabs */
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:var(--card2);padding:6px;border-radius:14px;border:1px solid var(--line);margin-bottom:18px}
+  .tab{border:0;border-radius:10px;background:transparent;color:var(--muted);font-weight:800;font-size:13.5px;padding:10px 2px;white-space:nowrap}
+  .tab.active{background:var(--card);color:var(--text);box-shadow:0 2px 10px rgba(0,0,0,.08);border:1px solid var(--line)}
+  .tab.active.blue{color:#fff;background:var(--blue);border-color:var(--blue);box-shadow:none}
+  /* title block */
+  .date{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:4px}
+  h1{font-size:28px;line-height:1.15;margin:0 0 6px;letter-spacing:-.03em}
+  .sub{font-size:14px;color:var(--muted);line-height:1.5;margin:0}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:12px 0 10px}
+  .stat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 4px 5px;text-align:center}
+  .stat b{display:block;font-size:17px;line-height:1.15;margin-top:1px}
+  .stat span{font-size:11px;color:var(--muted);font-weight:700;line-height:1.1}
+  .stat b.gold{color:var(--gold)}
+  .stats.settle{margin-top:-4px}
+  .stats.settle b{font-size:15px;white-space:nowrap}
+  .stat b.income{color:var(--plus)}
+  .stat b.expense{color:var(--minus)}
+  .stat b.net-plus{color:var(--plus)}
+  .stat b.net-minus{color:var(--minus)}
+  .stat b.net-zero{color:var(--text)}
+  /* table */
+  .tableWrap{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  thead th{background:var(--head);color:var(--head-text);font-weight:800;padding:7px 6px;text-align:center;font-size:13px;line-height:1.2}
+  thead th:first-child{text-align:left;padding-left:10px}
+  tbody td{padding:7px 6px;border-top:1px solid var(--line);text-align:center;vertical-align:middle;background:var(--card);line-height:1.25}
+  tbody td:first-child{text-align:left;padding-left:10px}
+  tbody tr{cursor:pointer}
+  tbody tr:active td{background:var(--blue-soft)}
+  tbody tr.is-base td{background:var(--blue-soft);box-shadow:inset 0 1px 0 var(--blue), inset 0 -1px 0 var(--blue)}
+  tbody tr.is-base td:first-child{box-shadow:inset 2px 0 0 var(--blue), inset 0 1px 0 var(--blue), inset 0 -1px 0 var(--blue)}
+  tbody tr.is-base td:last-child{box-shadow:inset -2px 0 0 var(--blue), inset 0 1px 0 var(--blue), inset 0 -1px 0 var(--blue)}
+  .rank{font-weight:900;width:26px;display:inline-block;text-align:center;color:var(--muted)}
+  tr:nth-child(1) .rank{color:var(--gold)}
+  .name{font-weight:800}
+  .star{color:var(--gold);font-size:17px;margin-left:2px}
+  .score{font-weight:900;font-size:16px}
+  .diff{font-weight:900}
+  .diff.plus{color:var(--plus)} .diff.minus{color:var(--minus)} .diff.zero{color:var(--muted)}
+  .money{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-top:1px;line-height:1.2}
+  /* register */
+  .hidden{display:none !important}
+  label{font-size:13px;font-weight:800;color:var(--muted);display:block;margin:16px 0 7px}
+  label:first-of-type{margin-top:2px}
+  .input, textarea.input{width:100%;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:12px 13px;outline:none}
+  .input:focus{border-color:var(--blue)}
+  textarea.input{line-height:1.6;resize:vertical;font-size:15px}
+  .btn{width:100%;border:0;border-radius:12px;font-weight:900;font-size:16px;padding:13px 14px;margin-top:14px}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-gray{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+  .row2{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:stretch}
+  .row2 .btn{margin-top:0}
+  .divider{display:flex;align-items:center;gap:10px;margin:18px 0 0;color:var(--muted);font-size:12px;font-weight:800}
+  .divider::before,.divider::after{content:"";height:1px;background:var(--line);flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:7px 8px 7px 11px;font-size:13px;font-weight:800;min-height:36px}
+  .chip button{min-height:28px;width:28px;border-radius:999px;border:0;background:var(--card);color:var(--muted);font-size:16px;line-height:1;padding:0}
+  .msg{font-size:13px;font-weight:700}
+  .msg:not(:empty){margin-top:10px}
+  .msg.ok{color:var(--green)} .msg.err{color:var(--red)}
+  #regPanel .btn{margin-top:12px}
+  #regPanel label{margin:14px 0 6px}
+  #regPanel label:first-of-type{margin-top:14px}
+  /* register settings: 핀 단가 + 게임수 */
+  .regHead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}
+  .regHead h1{font-size:20px;margin:0;line-height:1.2;white-space:nowrap;flex-shrink:1;min-width:0}
+  .pinCtl{display:flex;align-items:baseline;gap:2px;font-weight:900;font-size:20px;line-height:1.2;letter-spacing:.01em;white-space:nowrap}
+  .pinCtl .pinWord{color:var(--text);line-height:1.2}
+  .pinCtl input{width:44px;border:0;background:transparent;color:var(--blue);font:inherit;font-weight:900;line-height:1.2;text-align:left;padding:0;outline:none;border-bottom:2px solid transparent}
+  .pinCtl input:focus{border-bottom-color:var(--blue)}
+  .headCtl{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .gamesRow{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:4px 5px 4px 8px}
+  .gamesRow .gLabel{font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap;flex-shrink:0}
+  .gamesRow input{width:38px;border:1.5px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);padding:4px 2px;text-align:center;font-weight:900;font-size:14px;outline:none}
+  .gamesRow input:focus{border-color:var(--blue)}
+  /* history */
+  .histCount{font-size:12px;font-weight:800;color:var(--muted);margin:14px 0 8px}
+  .histItem{display:flex;align-items:flex-start;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px 12px 13px 14px;margin-bottom:8px;cursor:pointer;text-align:left;width:100%}
+  .histItem:active{border-color:var(--blue)}
+  .histBody{flex:1;min-width:0}
+  .histTitle{font-weight:900;font-size:16px;line-height:1.25;word-break:keep-all}
+  .histMeta{font-size:12.5px;color:var(--muted);font-weight:700;margin-top:3px;line-height:1.45}
+  .histTop{font-size:13px;font-weight:800;margin-top:5px}
+  .histTop span{color:var(--gold)}
+  .histDel{flex-shrink:0;min-height:32px;width:32px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:16px;line-height:1;padding:0}
+  .histEmpty{border:1.5px dashed var(--line);border-radius:14px;padding:24px 14px;text-align:center;color:var(--muted);font-size:14px;font-weight:700;line-height:1.55;margin-top:14px}
+  @media (max-width:380px){ h1{font-size:25px} .stats b{font-size:16px} table{font-size:14px} .tab{font-size:12.5px} }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">PIN<span>100</span></div>
+    <div class="pill">결과보기</div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" role="tablist" aria-label="화면 전환">
+      <button class="tab active blue" id="tabView" onclick="showTab('view')">📋 결과</button>
+      <button class="tab" id="tabReg" onclick="showTab('reg')">✏️ 결과 등록</button>
+      <button class="tab" id="tabHist" onclick="showTab('hist')">🕘 이전 기록</button>
+    </div>
+
+    <!-- VIEW -->
+    <section id="viewPanel">
+      <div class="date" id="viewDate">오늘 경기</div>
+      <div class="sub" id="syncStatus">서버 연결 중…</div>
+      <h1 id="gameTitle">오늘 경기</h1>
+
+      <div class="stats">
+        <div class="stat"><span>참가</span><b id="statCount">0명</b></div>
+        <div class="stat"><span>1등 총핀</span><b class="gold" id="statTop">-</b></div>
+        <div class="stat"><span>전체 평균</span><b id="statAvg">-</b></div>
+      </div>
+
+      <div class="stats settle" aria-label="선택한 사람 정산">
+        <div class="stat"><span>수입</span><b id="statIn" class="income">0원</b></div>
+        <div class="stat"><span>지출</span><b id="statOut" class="expense">0원</b></div>
+        <div class="stat"><span>합계</span><b id="statNet" class="net-zero">0원</b></div>
+      </div>
+
+      <div class="tableWrap">
+        <table aria-label="결과 순위표">
+          <thead><tr><th style="width:46%">이름</th><th>총핀</th><th>핀 차이</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <button class="btn btn-blue" onclick="shareResult()">링크 공유하기</button>
+      <div class="msg" id="shareMsg" role="status" aria-live="polite"></div>
+      <button class="btn btn-green" onclick="showTab('reg')">결과 등록 / 수정하기</button>
+      <button class="btn btn-gray" onclick="showTab('hist')">이전 기록보기</button>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="histPanel" class="hidden">
+      <div class="date">최근 경기 기록</div>
+      <h1>이전 기록보기</h1>
+      <p class="sub">경기는 최대 5개까지만 보관돼요. 새 경기를 등록하면 가장 오래된 기록부터 지워지고, 기록은 서버에 저장돼서 누구나 볼 수 있어요.</p>
+      <div class="histCount" id="histCount"></div>
+      <div id="histList"></div>
+      <button class="btn btn-green" onclick="showTab('view')">← 결과보기로 돌아가기</button>
+    </section>
+
+    <!-- REGISTER -->
+    <section id="regPanel" class="hidden">
+      <div class="regHead">
+        <h1>결과 등록</h1>
+        <div class="headCtl">
+          <div class="pinCtl" aria-label="핀당 금액 설정"><span class="pinWord">핀</span><input id="pinRate" type="number" inputmode="numeric" min="0" step="10" value="100" onchange="setRate()" aria-label="핀당 금액" /></div>
+          <div class="gamesRow">
+            <span class="gLabel">게임수</span>
+            <input id="gamesInput" type="number" inputmode="numeric" min="1" max="30" value="1" oninput="setGames()" onchange="setGames(true)" aria-label="게임수" />
+          </div>
+        </div>
+      </div>
+
+      <label for="bulkInput">명단 붙여넣기 — 한 줄에 한 명, “이름 총핀”</label>
+      <textarea class="input" id="bulkInput" rows="7" placeholder="한 줄에 한 명씩 넣어주세요&#10;예) 홍길동 693"></textarea>
+      <div class="msg" id="bulkMsg"></div>
+      <button class="btn btn-blue" onclick="registerBulk()">이 내용으로 등록하고 결과보기</button>
+
+      <div class="divider">한 명씩 추가 / 수정</div>
+      <label for="oneName">이름 · 총핀</label>
+      <div class="row2">
+        <input class="input" id="oneName" placeholder="이름" />
+        <input class="input" id="oneScore" type="number" inputmode="numeric" placeholder="총핀" />
+      </div>
+      <button class="btn btn-gray" onclick="addOne()">+ 한 명 추가하기</button>
+      <div class="msg" id="oneMsg"></div>
+
+      <label>지금 등록된 명단</label>
+      <div class="chips" id="chips"></div>
+
+      <button class="btn btn-green" onclick="showTab('view')">← 결과보기로 돌아가기</button>
+    </section>
+  </div>
+</div>
+
+<script>
+  var players = [];
+  var baseName = "";
+  var pinRate = 100;
+  var games = autoGames();
+  var gamesManual = false;
+  /* 이전 기록: 경기(하루치 결과) 단위로 최대 5개까지만 보관한다. 게임수(판 수)와 무관하다. */
+  var historyList = [];
+  var histSeq = 0;
+  var currentHistId = null;
+
+  /* ===== Firebase (메인 PIN100 앱과 같은 프로젝트) ===== */
+  var FB_CONFIG = {"apiKey": "AIzaSyAXo8d6BguTIQBdmrfhqQsjK1nNzcla89k", "authDomain": "pin100-2be6b.firebaseapp.com", "databaseURL": "https://pin100-2be6b-default-rtdb.asia-southeast1.firebasedatabase.app", "projectId": "pin100-2be6b", "storageBucket": "pin100-2be6b.firebasestorage.app", "messagingSenderId": "751880237593", "appId": "1:751880237593:web:08339b4104a3ed7a063088"};
+  var FB = { db:null, ready:false, linkMode:false, applyingRemote:false, currentAttached:false };
+  var fbCurrentRef = null, fbHistoryRef = null;
+  function fbStatus(text){ var el = document.getElementById("syncStatus"); if(el) el.textContent = text; }
+  function fbEntryData(entry){
+    return { title: entry.title,
+      savedAt: entry.savedAt instanceof Date ? entry.savedAt.getTime() : Date.now(),
+      players: entry.players, baseName: entry.baseName, pinRate: entry.pinRate,
+      games: entry.games, gamesManual: entry.gamesManual };
+  }
+  function fbAttachCurrent(){
+    if(!FB.ready || !fbCurrentRef || FB.currentAttached) return;
+    FB.currentAttached = true;
+    fbCurrentRef.on("value", function(snap){
+      var v = snap.val();
+      if(!v) return;
+      applyRemoteCurrent(v);
+    }, function(){ fbStatus("서버 읽기 실패 — 규칙을 확인해주세요."); });
+  }
+  function applyRemoteCurrent(v){
+    if(!v || !Array.isArray(v.players)) return;
+    var list = [];
+    v.players.forEach(function(p){ if(p && p.name) list.push({name:String(p.name), score:parseInt(p.score,10)||0}); });
+    FB.applyingRemote = true;
+    players = list;
+    baseName = list.some(function(p){return p.name===v.baseName;}) ? v.baseName : (list.length ? sorted()[0].name : "");
+    var r = parseInt(v.pinRate,10); pinRate = isNaN(r)||r<0 ? 100 : r;
+    var g = parseInt(v.games,10); games = !isNaN(g) && g>=1 && g<=30 ? g : autoGames();
+    gamesManual = !!v.gamesManual;
+    if(v.histId) currentHistId = v.histId;
+    render();
+    FB.applyingRemote = false;
+  }
+  function fbWriteCurrent(){
+    if(!FB.ready || !fbCurrentRef) return;
+    if(FB.linkMode){ FB.linkMode = false; fbAttachCurrent(); }
+    if(FB.applyingRemote) return;
+    fbCurrentRef.set({ players: snapshotPlayers(), baseName: baseName, pinRate: pinRate,
+      games: games, gamesManual: gamesManual, histId: currentHistId,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(function(){ fbStatus("서버 저장 실패 — 규칙을 확인해주세요."); });
+  }
+  function fbTrimHistory(){
+    if(!FB.ready || !fbHistoryRef) return;
+    fbHistoryRef.orderByChild("savedAt").once("value", function(snap){
+      var val = snap.val() || {};
+      var keys = Object.keys(val).sort(function(a,b){ return (val[a].savedAt||0)-(val[b].savedAt||0); });
+      while(keys.length > 5){ var k = keys.shift(); fbHistoryRef.child(k).remove(); }
+    });
+  }
+  function fbInit(){
+    try{
+      if(typeof firebase === "undefined"){ fbStatus("서버에 연결하지 못했어요 — 이 폰에서만 보여요."); return; }
+      if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+      FB.db = firebase.database();
+      firebase.auth().signInAnonymously().then(function(){
+        FB.ready = true;
+        fbStatus("서버 연결됨 · 누구나 같은 결과를 봐요");
+        fbCurrentRef = FB.db.ref("results/current");
+        fbHistoryRef = FB.db.ref("results/history");
+        if(!FB.linkMode) fbAttachCurrent();
+        fbHistoryRef.orderByChild("savedAt").limitToLast(5).on("value", function(snap){
+          var val = snap.val() || {};
+          var list = Object.keys(val).map(function(k){
+            var e = val[k] || {};
+            return { id:k, title:e.title||"오늘 경기",
+              savedAt: e.savedAt ? new Date(e.savedAt) : new Date(),
+              players: Array.isArray(e.players) ? e.players : [], baseName: e.baseName || "",
+              pinRate: e.pinRate, games: e.games, gamesManual: !!e.gamesManual };
+          });
+          list.sort(function(a,b){ return b.savedAt - a.savedAt; });
+          historyList = list;
+          renderHistory();
+        }, function(){ fbStatus("서버 읽기 실패 — 규칙을 확인해주세요."); });
+      }).catch(function(){ fbStatus("서버 로그인 실패 — 이 폰에서만 보여요."); });
+    }catch(e){ fbStatus("서버에 연결하지 못했어요 — 이 폰에서만 보여요."); }
+  }
+
+  function autoGames(){
+    if(!players.length) return 1;
+    var top = Math.max.apply(null, players.map(function(p){return p.score;}));
+    return Math.max(1, Math.floor(top/200));
+  }
+  function capPins(){ return games*50; }
+  function capped(diff){ var c=capPins(); return diff>c?c:diff<-c?-c:diff; }
+  function setRate(){
+    var v = parseInt(document.getElementById("pinRate").value,10);
+    pinRate = isNaN(v)||v<0 ? 0 : v;
+    syncHistoryEntry(); fbWriteCurrent();
+    render();
+  }
+  function setGames(finalize){
+    var el = document.getElementById("gamesInput");
+    var v = parseInt(el.value,10);
+    if(isNaN(v)){
+      if(finalize){ el.value = games; }
+      return;
+    }
+    games = v<1 ? 1 : (v>30 ? 30 : v);
+    gamesManual = true;
+    syncHistoryEntry(); fbWriteCurrent();
+    render();
+  }
+
+  function sorted(){ return players.slice().sort(function(a,b){ return b.score-a.score; }); }
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function todayKey(){ var d=new Date(); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function todayLabel(){ var d=new Date(); var days=["일요일","월요일","화요일","수요일","목요일","금요일","토요일"]; return d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일 "+days[d.getDay()]+" · 오늘 경기"; }
+  function autoTitle(){ var list=sorted(); if(!list.length) return "오늘 경기"; return todayKey()+"_"+list[list.length-1].name+"컵"; }
+  function fmt(n){ return n.toLocaleString("ko-KR"); }
+  function signed(n){ return n>0 ? "+"+fmt(n) : n<0 ? "−"+fmt(Math.abs(n)) : "0"; }
+  function trunc1000(n){ return Math.floor(n/1000)*1000; }
+  function money(diff){ return fmt(trunc1000(Math.abs(capped(diff))*pinRate))+"원"; }
+
+  /* ===== 이전 기록 (경기 단위, 최대 5개) ===== */
+  function snapshotPlayers(){ return players.map(function(p){ return {name:p.name, score:p.score}; }); }
+  function samePlayers(a,b){
+    if(a.length!==b.length) return false;
+    for(var i=0;i<a.length;i++){ if(a[i].name!==b[i].name || a[i].score!==b[i].score) return false; }
+    return true;
+  }
+  function findHistory(id){
+    for(var i=0;i<historyList.length;i++){ if(historyList[i].id===id) return historyList[i]; }
+    return null;
+  }
+  function writeSnapshot(entry){
+    entry.title = autoTitle();
+    entry.savedAt = new Date();
+    entry.players = snapshotPlayers();
+    entry.baseName = baseName;
+    entry.pinRate = pinRate;
+    entry.games = games;
+    entry.gamesManual = gamesManual;
+  }
+  /* 붙여넣기 등록 = 새 경기 1개로 저장. 직전 기록과 내용이 같으면 새로 쌓지 않고 그 기록만 갱신한다. */
+  function saveNewHistory(){
+    if(!players.length) return;
+    var top = historyList[0];
+    if(top && samePlayers(top.players, players) && top.games===games && top.pinRate===pinRate){
+      writeSnapshot(top); top.baseName = baseName;
+      if(FB.ready && fbHistoryRef && typeof top.id === "string") fbHistoryRef.child(top.id).update(fbEntryData(top));
+      currentHistId = top.id; renderHistory(); return;
+    }
+    var entry = { id: ++histSeq };
+    writeSnapshot(entry);
+    if(FB.ready && fbHistoryRef){
+      var ref = fbHistoryRef.push(fbEntryData(entry));
+      entry.id = ref.key;
+      currentHistId = ref.key;
+      fbTrimHistory();
+    } else {
+      historyList.unshift(entry);
+      if(historyList.length>5) historyList.length = 5;
+      currentHistId = entry.id;
+    }
+    renderHistory();
+  }
+
+  function ensureHistoryEntry(){
+    if(!players.length) return;
+    var entry = findHistory(currentHistId);
+    if(entry){ writeSnapshot(entry);
+      if(FB.ready && fbHistoryRef && typeof entry.id === "string") fbHistoryRef.child(entry.id).update(fbEntryData(entry));
+      renderHistory(); return; }
+    saveNewHistory();
+  }
+
+  function syncHistoryEntry(){
+    var entry = findHistory(currentHistId);
+    if(!entry) return;
+    writeSnapshot(entry);
+    if(FB.ready && fbHistoryRef && typeof entry.id === "string") fbHistoryRef.child(entry.id).update(fbEntryData(entry));
+    renderHistory();
+  }
+
+  function loadHistory(id){
+    var entry = findHistory(id);
+    if(!entry) return;
+    players = entry.players.map(function(p){ return {name:p.name, score:p.score}; });
+    baseName = entry.baseName;
+    pinRate = entry.pinRate;
+    games = entry.games;
+    gamesManual = entry.gamesManual;
+    currentHistId = entry.id;
+    render();
+    fbWriteCurrent();
+    showTab("view");
+  }
+
+  function deleteHistory(id){
+    if(FB.ready && fbHistoryRef && typeof id === "string") fbHistoryRef.child(id).remove();
+    historyList = historyList.filter(function(e){ return e.id!==id; });
+    if(currentHistId===id) currentHistId = null;
+    renderHistory();
+  }
+
+  function savedLabel(d){
+    return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+" "+pad2(d.getHours())+":"+pad2(d.getMinutes())+" 저장";
+  }
+  function renderHistory(){
+    var countEl = document.getElementById("histCount");
+    var box = document.getElementById("histList");
+    if(!countEl || !box) return;
+    countEl.textContent = "보관 중 "+historyList.length+"경기 / 최대 5경기";
+    while(box.firstChild) box.removeChild(box.firstChild);
+    if(!historyList.length){
+      var empty = document.createElement("div");
+      empty.className = "histEmpty";
+      empty.textContent = "아직 저장된 기록이 없어요. 결과를 등록하면 그 경기가 여기에 쌓여요.";
+      box.appendChild(empty);
+      return;
+    }
+    historyList.forEach(function(entry){
+      var item = document.createElement("div");
+      item.className = "histItem";
+      item.setAttribute("role","button");
+      item.setAttribute("aria-label", entry.title+" 기록 불러오기");
+      item.addEventListener("click", function(){ loadHistory(entry.id); });
+      var body = document.createElement("div");
+      body.className = "histBody";
+      var t = document.createElement("div");
+      t.className = "histTitle";
+      t.textContent = entry.title;
+      var meta = document.createElement("div");
+      meta.className = "histMeta";
+      meta.textContent = savedLabel(entry.savedAt)+" · "+entry.players.length+"명 · "+entry.games+"게임 · 핀"+fmt(entry.pinRate);
+      body.appendChild(t); body.appendChild(meta);
+      var topP = entry.players.slice().sort(function(a,b){ return b.score-a.score; })[0];
+      if(topP){
+        var tp = document.createElement("div");
+        tp.className = "histTop";
+        var lab = document.createElement("span"); lab.textContent = "1등 ";
+        tp.appendChild(lab);
+        tp.appendChild(document.createTextNode(topP.name+" "+fmt(topP.score)));
+        body.appendChild(tp);
+      }
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "histDel";
+      del.textContent = "×";
+      del.setAttribute("aria-label", entry.title+" 기록 삭제");
+      del.addEventListener("click", function(ev){ ev.stopPropagation(); deleteHistory(entry.id); });
+      item.appendChild(body); item.appendChild(del);
+      box.appendChild(item);
+    });
+  }
+
+  /* 링크 공유: 서버 없이도 받는 사람이 같은 결과를 보도록, 현재 명단·기준·게임수·핀 단가를 링크(#d=) 안에 담는다. 깃허브에 올린 주소 그대로 전송된다. */
+  function encodeState(){
+    var state = {
+      p: players.map(function(p){ return [p.name, p.score]; }),
+      b: baseName,
+      r: pinRate,
+      g: games,
+      m: gamesManual ? 1 : 0
+    };
+    var json = JSON.stringify(state);
+    var b64 = btoa(unescape(encodeURIComponent(json)));
+    return b64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  function decodeState(code){
+    try{
+      var b64 = code.replace(/-/g,"+").replace(/_/g,"/");
+      while(b64.length % 4) b64 += "=";
+      var json = decodeURIComponent(escape(atob(b64)));
+      var s = JSON.parse(json);
+      if(!s || !Array.isArray(s.p) || !s.p.length) return false;
+      var list = [];
+      s.p.forEach(function(pair){
+        var nm = String(pair[0]||"").trim();
+        var sc = parseInt(pair[1],10);
+        if(nm && !isNaN(sc)) list.push({name:nm, score:sc});
+      });
+      if(!list.length) return false;
+      players = list;
+      baseName = list.some(function(p){return p.name===s.b;}) ? s.b : sorted()[0].name;
+      var r = parseInt(s.r,10); pinRate = isNaN(r)||r<0 ? 100 : r;
+      var g = parseInt(s.g,10); gamesManual = s.m===1;
+      games = !isNaN(g) && g>=1 && g<=30 ? g : autoGames();
+      return true;
+    }catch(e){ return false; }
+  }
+  function pageBaseUrl(){
+    /* 지금 열려 있는 페이지 주소(해시 제외). 깃허브에 올리면 그 주소가 그대로 공유 링크가 된다. */
+    return window.location.href.split("#")[0];
+  }
+  function buildShareUrl(){
+    return pageBaseUrl() + "#d=" + encodeState();
+  }
+  function syncUrl(){
+    try{
+      var url = buildShareUrl();
+      if(window.location.href !== url) history.replaceState(null, "", url);
+    }catch(e){}
+  }
+  function applyUrlState(){
+    var h = window.location.hash || "";
+    var m = h.match(/[#&]d=([A-Za-z0-9\-_]+)/);
+    if(m) return decodeState(m[1]);
+    return false;
+  }
+
+  function setShareMsg(text, ok){
+    var el = document.getElementById("shareMsg");
+    if(!el) return;
+    el.className = "msg "+(ok?"ok":"err");
+    el.textContent = text;
+  }
+  function copyLink(url){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(url).then(function(){ return true; }).catch(function(){ return fallbackCopy(url); });
+    }
+    return Promise.resolve(fallbackCopy(url));
+  }
+  function fallbackCopy(text){
+    try{
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly","");
+      ta.style.position="fixed"; ta.style.top="0"; ta.style.left="0"; ta.style.opacity="0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      var ok = false;
+      try{ ok = document.execCommand("copy"); }catch(e){ ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }catch(e){ return false; }
+  }
+  function shareResult(){
+    if(!players.length){ setShareMsg("공유할 결과가 없어요. 먼저 결과를 등록해주세요.", false); return; }
+    var url = buildShareUrl();
+    var title = "PIN100 결과";
+    var text = "🎳 PIN100 결과 · " + autoTitle();
+    var payload = { title: title, text: text, url: url };
+    if(navigator.share){
+      var can = true;
+      if(navigator.canShare){ try{ can = navigator.canShare(payload); }catch(e){ can = true; } }
+      if(can){
+        navigator.share(payload).then(function(){
+          setShareMsg("링크를 공유했어요.", true);
+        }).catch(function(err){
+          if(err && err.name==="AbortError") return;
+          copyLink(url).then(function(ok){
+            setShareMsg(ok ? "링크를 복사했어요. 카톡방에 붙여넣어주세요." : "공유에 실패했어요. 다시 눌러주세요.", ok);
+          });
+        });
+        return;
+      }
+    }
+    copyLink(url).then(function(ok){
+      setShareMsg(ok ? "링크를 복사했어요. 카톡방에 붙여넣어주세요." : "복사에 실패했어요. 다시 눌러주세요.", ok);
+    });
+  }
+
+  function render(){
+    var list = sorted();
+    if(!players.find(function(p){return p.name===baseName;})) baseName = list.length?list[0].name:"";
+    var base = players.find(function(p){return p.name===baseName;});
+    var baseScore = base ? base.score : 0;
+
+    document.getElementById("statCount").textContent = players.length+"명";
+    document.getElementById("statTop").textContent = list.length ? fmt(list[0].score) : "-";
+    var avg = players.length ? Math.round(players.reduce(function(s,p){return s+p.score;},0)/players.length) : 0;
+    document.getElementById("statAvg").textContent = players.length ? fmt(avg) : "-";
+    document.getElementById("gameTitle").textContent = autoTitle();
+    document.getElementById("viewDate").textContent = todayLabel();
+    var gi = document.getElementById("gamesInput");
+    if(document.activeElement !== gi) gi.value = games;
+    var pr = document.getElementById("pinRate");
+    if(pr && document.activeElement !== pr) pr.value = pinRate;
+
+    var income=0, expense=0;
+    players.forEach(function(p){
+      if(p.name===baseName) return;
+      var d = baseScore - p.score;
+      var amt = trunc1000(Math.abs(capped(d))*pinRate);
+      if(d>0) income+=amt; else if(d<0) expense+=amt;
+    });
+    var net = income - expense;
+    document.getElementById("statIn").textContent = fmt(income)+"원";
+    document.getElementById("statOut").textContent = fmt(expense)+"원";
+    var netEl = document.getElementById("statNet");
+    netEl.textContent = net>0 ? "+"+fmt(net)+"원" : net<0 ? "−"+fmt(Math.abs(net))+"원" : "0원";
+    netEl.className = net>0 ? "net-plus" : net<0 ? "net-minus" : "net-zero";
+
+    var tbody = document.getElementById("tbody");
+    while(tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    list.forEach(function(p,i){
+      var diff = p.score - baseScore;
+      var cls = diff>0?"plus":diff<0?"minus":"zero";
+      var isBase = p.name===baseName;
+      var tr = document.createElement("tr");
+      if(isBase) tr.className = "is-base";
+      tr.setAttribute("aria-label", p.name+" 기준 선택");
+      tr.addEventListener("click", function(){ setBase(p.name); });
+      var td1 = document.createElement("td");
+      var rank = document.createElement("span"); rank.className="rank"; rank.textContent = String(i+1);
+      var nm = document.createElement("span"); nm.className="name"; nm.textContent = p.name;
+      td1.appendChild(rank); td1.appendChild(document.createTextNode(" ")); td1.appendChild(nm);
+      if(isBase){ var st = document.createElement("span"); st.className="star"; st.textContent="★"; td1.appendChild(document.createTextNode(" ")); td1.appendChild(st); }
+      var td2 = document.createElement("td");
+      var sc = document.createElement("span"); sc.className="score"; sc.textContent = fmt(p.score);
+      td2.appendChild(sc);
+      var td3 = document.createElement("td");
+      var df = document.createElement("span"); df.className="diff "+cls; df.textContent = signed(diff);
+      var mn = document.createElement("span"); mn.className="money"; mn.textContent = isBase ? "기준" : money(diff);
+      td3.appendChild(df); td3.appendChild(mn);
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      tbody.appendChild(tr);
+    });
+    if(!list.length){
+      var etr = document.createElement("tr");
+      var etd = document.createElement("td");
+      etd.colSpan = 3;
+      etd.style.textAlign = "center"; etd.style.color = "var(--muted)"; etd.style.padding = "22px";
+      etd.textContent = "아직 등록된 결과가 없어요";
+      etr.appendChild(etd); tbody.appendChild(etr);
+    }
+
+    renderChips();
+    if(players.length) syncUrl();
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function setBase(name){ baseName=name; syncHistoryEntry(); render(); }
+  function showTab(which){
+    document.getElementById("viewPanel").classList.toggle("hidden", which!=="view");
+    document.getElementById("regPanel").classList.toggle("hidden", which!=="reg");
+    document.getElementById("histPanel").classList.toggle("hidden", which!=="hist");
+    document.getElementById("tabView").className = "tab"+(which==="view"?" active blue":"");
+    document.getElementById("tabReg").className = "tab"+(which==="reg"?" active blue":"");
+    document.getElementById("tabHist").className = "tab"+(which==="hist"?" active blue":"");
+    if(which==="hist") renderHistory();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function renderChips(){
+    var list = sorted();
+    var box = document.getElementById("chips");
+    while(box.firstChild) box.removeChild(box.firstChild);
+    if(!list.length){
+      var none = document.createElement("span");
+      none.style.color = "var(--muted)"; none.style.fontSize = "13px";
+      none.textContent = "없음";
+      box.appendChild(none);
+      return;
+    }
+    list.forEach(function(p){
+      var chip = document.createElement("span");
+      chip.className = "chip";
+      chip.appendChild(document.createTextNode(p.name+" "+fmt(p.score)));
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "×";
+      btn.setAttribute("aria-label", p.name+" 삭제");
+      btn.addEventListener("click", function(){ removePlayer(p.name); });
+      chip.appendChild(btn);
+      box.appendChild(chip);
+    });
+  }
+  function removePlayer(name){
+    players = players.filter(function(p){return p.name!==name;});
+    var t=sorted(); baseName = t.length?t[0].name:"";
+    if(!gamesManual) games = autoGames();
+    if(!players.length && currentHistId!==null){ deleteHistory(currentHistId); }
+    else syncHistoryEntry(); fbWriteCurrent();
+    render();
+  }
+  function registerBulk(){
+    var text = document.getElementById("bulkInput").value;
+    var lines = text.split(/\n+/).map(function(s){return s.trim();}).filter(Boolean);
+    var out=[], errors=[];
+    lines.forEach(function(line){
+      if(!/\d/.test(line)) return;
+      var m = line.match(/^(.+?)[\s:]+(\d{1,5})$/);
+      if(m) out.push({name:m[1].trim(), score:parseInt(m[2],10)});
+      else errors.push(line);
+    });
+    var msg=document.getElementById("bulkMsg");
+    if(!out.length){ msg.className="msg err"; msg.textContent="읽을 수 있는 줄이 없어요. “이름 693” 형식으로 넣어주세요."; return; }
+    players = out;
+    baseName = sorted()[0].name;
+    if(!gamesManual) games = autoGames();
+    msg.className="msg ok"; msg.textContent = out.length+"명 등록됐어요."+(errors.length?" 못 읽은 줄 "+errors.length+"개는 제외했어요.":"");
+    saveNewHistory(); fbWriteCurrent();
+    render(); showTab("view");
+  }
+  function addOne(){
+    var name=document.getElementById("oneName").value.trim();
+    var score=parseInt(document.getElementById("oneScore").value,10);
+    var msg=document.getElementById("oneMsg");
+    if(!name || isNaN(score)){ msg.className="msg err"; msg.textContent="이름과 총핀을 모두 입력해주세요."; return; }
+    var ex=players.find(function(p){return p.name===name;});
+    if(ex) ex.score=score; else players.push({name:name,score:score});
+    baseName = sorted()[0].name;
+    if(!gamesManual) games = autoGames();
+    document.getElementById("oneName").value=""; document.getElementById("oneScore").value="";
+    msg.className="msg ok"; msg.textContent=name+" "+fmt(score)+" 등록됐어요.";
+    ensureHistoryEntry(); fbWriteCurrent();
+    render();
+  }
+  var hasLinkState = applyUrlState();
+  FB.linkMode = !!hasLinkState;
+  render();
+  renderHistory();
+  fbInit();
+</script>
+</body>
+</html>
